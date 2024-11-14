@@ -1,0 +1,43 @@
+
+
+body {
+    background-color: rgb(18, 15, 18);
+}
+
+main h1 {
+    color: rgb(223, 224, 224);
+}
+
+
+main p {
+    color: rgb(229, 229, 225);
+}
+
+
+footer {
+    background-color: rgb(141, 16, 16);
+}
+
+footer p {
+    color: rgb(233, 233, 237);
+}
+
+
+#board {
+    margin: 20px auto;
+}
+
+/* Chessboard custom styling */
+#board .white-1e1d7 {
+    background-color: #f0d9b5; /* Light brown for white squares */
+}
+
+#board .black-3c85d {
+    background-color: #b58863; /* Dark brown for black squares */
+}
+
+/* Text styling */
+#status {
+    color: #fce300;
+    font-size: 18px;
+}

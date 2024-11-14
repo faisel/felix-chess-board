@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Herzlich Willkommen bei meiner neuen Chess Board App">
+    <title>Felix`s Chess Board</title>
+
+
+    <!-- Tailwind CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <!-- Custom and chessboard styles -->
+    <link href="assets/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/chessboardjs-master/lib/chessboard.css">
+
+    <style>
+        /* Custom board and piece colors */
+        #board .white-1e1d7 { background-color: #f0d9b5; }
+        #board .black-3c85d { background-color: #b58863; }
+
+        /* Custom select box styling */
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding: 0.5rem;
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #555;
+            border-radius: 0;
+            cursor: pointer;
+        }
+        select:focus {
+            outline: none;
+            border-color: #777;
+        }
+
+        /* Responsive board */
+        #board {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+    <main class="flex-grow">
+        <h1 class="text-4xl font-bold text-center mt-5">Felix`s Chess Board</h1>
+        <p class="text-lg text-center mt-3">Herzlich Willkommen bei meiner neuen Chess Board App</p>
+
+        <div class="flex justify-center mt-5 mb-3 space-x-4">
+            <label>
+                Wähle Farbe:
+                <select id="colorSelect">
+                    <option value="white">Weiß</option>
+                    <option value="black">Schwarz</option>
+                </select>
+            </label>
+
+            <label>
+                Schwierigkeitsgrad:
+                <select id="difficultySelect">
+                    <option value="easy">Einfach</option>
+                    <option value="hard">Schwer</option>
+                </select>
+            </label>
+        </div>
+
+        <div id="board" class="mt-5"></div>
+        <div id="status" class="text-center mt-3"></div>
+
+        <div class="flex justify-center mt-5">
+            <button id="undoButton" class="bg-blue-500 text-white px-4 py-2 rounded">Letzten Zug Rückgängig</button>
+        </div>
+    </main>
+
+    <footer class="text-white py-6 mt-10 bg-gray-800">
+        <div class="container mx-auto text-center">
+            <p class="text-sm">&copy; 2024 Felix`s Schachbrett. Alle Rechte vorbehalten.</p>
+        </div>
+    </footer>
+
+    <!-- jQuery, chess.js, and chessboard.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="assets/chessboardjs-master/lib/chessboard.js"></script>
+
+    <script>
+        window.onload = function () {
+            const game = new Chess();
+            let board;
+            let userColor = 'white';
+            let aiDifficulty = 'easy';
+            let history = [];
+
+            function initBoard() {
+                board = Chessboard('board', {
+                    draggable: true,
+                    position: 'start',
+                    orientation: userColor,
+                    pieceTheme: 'assets/chessboardjs-master/website/img/chesspieces/alpha/{piece}.png',
+                    onDrop: onDrop,
+                });
+                updateStatus();
+            }
+
+            function onDrop(source, target) {
+                const move = game.move({
+                    from: source,
+                    to: target,
+                    promotion: 'q'
+                });
+                if (move === null) return 'snapback';
+                history.push(move);
+                updateStatus();
+
+                if (!game.game_over()) {
+                    window.setTimeout(makeAIMove, 500);
+                }
+            }
+
+            function makeAIMove() {
+                const possibleMoves = game.moves();
+                if (possibleMoves.length === 0) return;
+
+                let move;
+                if (aiDifficulty === 'easy') {
+                    move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                } else if (aiDifficulty === 'hard') {
+                    move = getBestMove(game, 4); // Depth 4 for harder difficulty
+                }
+
+                game.move(move);
+                board.position(game.fen());
+                updateStatus();
+            }
+
+            function getBestMove(game, depth) {
+                let bestMove = null;
+                let bestValue = -Infinity;
+
+                game.moves().forEach((move) => {
+                    game.move(move);
+                    let boardValue = minimax(game, depth - 1, -Infinity, Infinity, false);
+                    game.undo();
+
+                    if (boardValue > bestValue) {
+                        bestValue = boardValue;
+                        bestMove = move;
+                    }
+                });
+
+                return bestMove || game.moves()[0];
+            }
+
+            function minimax(game, depth, alpha, beta, isMaximizingPlayer) {
+                if (depth === 0 || game.game_over()) {
+                    return evaluateBoard(game);
+                }
+
+                const possibleMoves = game.moves();
+
+                if (isMaximizingPlayer) {
+                    let maxEval = -Infinity;
+                    for (const move of possibleMoves) {
+                        game.move(move);
+                        const eval = minimax(game, depth - 1, alpha, beta, false);
+                        game.undo();
+                        maxEval = Math.max(maxEval, eval);
+                        alpha = Math.max(alpha, eval);
+                        if (beta <= alpha) break;
+                    }
+                    return maxEval;
+                } else {
+                    let minEval = Infinity;
+                    for (const move of possibleMoves) {
+                        game.move(move);
+                        const eval = minimax(game, depth - 1, alpha, beta, true);
+                        game.undo();
+                        minEval = Math.min(minEval, eval);
+                        beta = Math.min(beta, eval);
+                        if (beta <= alpha) break;
+                    }
+                    return minEval;
+                }
+            }
+
+            function evaluateBoard(game) {
+                const pieceValues = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 900 };
+                const positionValues = {
+                    p: [[0, 0, 0, 0, 0, 0, 0, 0], [5, 5, 5, 5, 5, 5, 5, 5], [1, 1, 2, 3, 3, 2, 1, 1], [0.5, 0.5, 1, 2.5, 2.5, 1, 0.5, 0.5], [0, 0, 0, 2, 2, 0, 0, 0], [0.5, -0.5, -1, 0, 0, -1, -0.5, 0.5], [0.5, 1, 1, -2, -2, 1, 1, 0.5], [0, 0, 0, 0, 0, 0, 0, 0]],
+                    n: [[-5, -4, -3, -3, -3, -3, -4, -5], [-4, -2, 0, 0, 0, 0, -2, -4], [-3, 0, 1, 1.5, 1.5, 1, 0, -3], [-3, 0.5, 1.5, 2, 2, 1.5, 0.5, -3], [-3, 0, 1.5, 2, 2, 1.5, 0, -3], [-3, 0.5, 1, 1.5, 1.5, 1, 0.5, -3], [-4, -2, 0, 0.5, 0.5, 0, -2, -4], [-5, -4, -3, -3, -3, -3, -4, -5]],
+                    // Additional position values for other pieces can be defined here
+                };
+
+                let evaluation = 0;
+                const board = game.board();
+                for (let i = 0; i < board.length; i++) {
+                    for (let j = 0; j < board[i].length; j++) {
+                        const piece = board[i][j];
+                        if (piece) {
+                            const value = pieceValues[piece.type];
+                            evaluation += piece.color === 'w' ? value : -value;
+
+                            if (positionValues[piece.type]) {
+                                const posValue = piece.color === 'w' ? positionValues[piece.type][i][j] : positionValues[piece.type][7 - i][j];
+                                evaluation += piece.color === 'w' ? posValue : -posValue;
+                            }
+                        }
+                    }
+                }
+                return evaluation;
+            }
+
+            function updateStatus() {
+                let status = '';
+                if (game.in_checkmate()) {
+                    status = 'Schachmatt! Spiel vorbei.';
+                } else if (game.in_draw()) {
+                    status = 'Unentschieden!';
+                } else {
+                    const turn = game.turn() === 'w' ? 'Weiß' : 'Schwarz';
+                    status = `${turn} ist am Zug`;
+                    if (game.in_check()) {
+                        status += ' - Schach!';
+                    }
+                }
+                document.getElementById('status').innerText = status;
+            }
+
+            document.getElementById('undoButton').onclick = function () {
+                if (history.length >= 2) {
+                    game.undo();
+                    game.undo();
+                    history.pop();
+                    history.pop();
+                    board.position(game.fen());
+                    updateStatus();
+                }
+            };
+
+            document.getElementById('colorSelect').onchange = function () {
+                userColor = this.value;
+                game.reset();
+                history = [];
+                board.orientation(userColor);
+                initBoard();
+            };
+
+            document.getElementById('difficultySelect').onchange = function () {
+                aiDifficulty = this.value;
+            };
+
+            initBoard();
+        };
+    </script>
+</body>
+</html>
